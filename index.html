@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font: 13px Helvetica, Arial; }
+        form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+        form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+        form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+        #messages { list-style-type: none; margin: 0; padding: 0; }
+        #messages li { padding: 5px 10px; }
+        #messages li:nth-child(odd) { background: #eee; }
+        .subnameIsWriting {position: absolute; top: -20px; left: 10px; display: none;}
+        .subnameIsWriting p {font-size: 12px; color: grey;}
+        .nicknameGroup {position: absolute;right: 10px;top: -50px;text-align: right;}
+        .nicknameGroup input {border: 1px solid black}
+    </style>
+</head>
+<body>
+<ul id="users-list" style="float: right;">
+
+</ul>
+<ul id="messages"></ul>
+<form action="">
+    <div class="nicknameGroup">
+        <label for="nickname">Rentrer votre pseudo</label>
+        <input type="text" id="nickname">
+    </div>
+    <div class="subnameIsWriting">
+        <p><span></span> est en train d'écrire</p>
+    </div>
+    <input id="m" autocomplete="off" /><button>Send</button>
+</form>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script>
+    $(function () {
+        let subname = null;
+        let writingTimeout;
+
+        let socket = io();
+        $('form').submit(function(e){
+            e.preventDefault();
+            socket.emit('chat message', $('#m').val());
+            $('#m').val('');
+            return false;
+        });
+
+        $('#m').keyup( (e) => {
+            let data = {
+                'subname': subname,
+                'isWriting': true
+            };
+            clearTimeout(writingTimeout);
+            socket.emit('is writing', data);
+            writingTimeout = setTimeout( () => {
+                data.isWriting = false;
+                socket.emit('is writing', data);
+            }, 1500);
+        });
+
+        $('#nickname').focusout( () => {
+            subname = $('#nickname').val();
+            socket.emit('new subname', subname);
+        });
+
+        socket.on('chat message', function(msg){
+            $('#messages').append($('<li>').text(msg));
+        });
+
+        socket.on('is writing', (data) => {
+            if (data.isWriting)
+            {
+                $('.subnameIsWriting p span').html(data.subname != null ? data.subname : 'Un utilisateur');
+                $('.subnameIsWriting').show()
+            } else {
+                $('.subnameIsWriting').hide()
+            }
+        });
+
+        socket.on('new users', (users) => {
+            $('#users-list').html('');
+            $.each(users, (index, user) => {
+                $('#users-list').append('<li>'+user.subname+'</li>')
+            })
+        })
+    });
+
+    // (App = function (window,document,navigator,undefined)
+    // {
+    //     return {}
+    // })(window,document,navigator);
+    // App.dfhj()
+</script>
+</body>
+</html>
